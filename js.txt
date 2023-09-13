@@ -1,0 +1,340 @@
+Açıklama Javascript senkron ( aynı zamanda meydana gelen işlemler) çalışan bir dildir. Node.js ise kullandığı callbackler sayesinde asenkron ( ayrı zamanda meydana gelen işlemler) çalışabilen bir runtime'dir. Express ise node.js altında çalışan bir web frameworküdür. 
+Kalamar — 03/28/2022 9:27 PM
+Middleware Middleware normalde işletim sistemleri ve çalışan uygulamarında yer alır middlewareler, ancak express'de ise  routing ile Middleware anabileşenlerinden birisidir.  Middlewareleri ara yazılım olarak düşünebiliriz.
+Middleware'leri spesifik bir route geçmeden önce kullanıcının çerezlerini, bilgilerini, resimleri yüklemek için kullanabiliriz. Yükleme işlemi bittiğinde ise next() parametresi ile ilgili routere expressin geçmesini sağlarız. 
+Kalamar — 03/29/2022 3:42 PM
+Static Files Adında anlaşılabileceği üzere statik dosyalar bizim: style.css, javascript dosyaları, html sayfaları, resimler vb olan dosyalarımızdır ve biz bunları adreslerken her defasında refeferans vermek yerine tek bir dosyada gruplamak isteriz. Genelde bu dosyanın adı public veya view olur. 
+app.use(express.static('public')) böylece public adındaki dosya bizim statik dosyamız olmuş oldu.
+
+Statik dosya belirttildiğinden sonra dosya import etme şekli şu şekildedir:
+<link rel="stylesheet" href="style.css" (express statik dosyamızın public olduğunu biliyor böylece olduğu gibi style.css yazabiliriz.) 
+Kalamar — 03/29/2022 8:02 PM
+Template Engine Template engineler bizim html sayfalarımızı çok kolay bir şekilde oluşturmamıza ve yöntetmemize olanak sağlar. Popüler olanlardan bir kaçı Ejs ve HandleBars dir. View engine ayarlama alttaki gibidir;
+// app = express
+app.set('view engine', 'ejs');
+ 
+Kalamar — 04/04/2022 3:29 PM
+Route Classı Route classı bizim yönlendirmeleri kontrol etmemize ve düzenli bir şekilde çalışmaya olanak sağlayan bir built-in middleware'dir. 
+Spesifik get/post istekleri barındıracağımız routers adında bir klasörümüz olsun ve onun içinde de main.js adında bir dosya olsun.
+Örnek Kullanım Şekli
+// main.js
+const express = require('express') 
+const router = express.Router();
+router.get('/home', (req, res) => {console.log("Home için get isteği.")});
+router.post('/home', (req, res) => {console.log("Home için post isteği.")});
+module.exports = router;
+// app.js (routeri) anadosyamıza dahil etmek için
+const express = require('express');
+const app = express();
+const main = require('./routers/main.js');
+app.use('/', main); // anasayfa için main routesini kullanmasını söyledik.
+ 
+Kalamar — 04/04/2022 5:14 PM
+Body Parser yerine built-in MiddleWare (Express 4.16 ve üzeri bir sürüm)
+app.use(express.urlencoded({ extended: true }));  (BodyParser ile aynı işlevi görür)
+app.use(express.json());
+Neden gerekli? Post işlemleri gerçekleştiğinde sunucuya ulaşan verileri almak için bu yöntemi kullanırız. Aksi halde istenmeyen bir çok veri bize ulaşır ve istenilen veriyi bulmak zorlaşır.
+Konsolumuzda aşağıdaki kod örneğine tekabül eden obje verilerini belirttiğimiz spesifik veriler şeklinde görürüz.
+// ... (req, res) => {
+var loginDetails = {
+username : request.body.username,
+password : request.body.password
+};
+
+express.json ile urlencoded arasındaki fark
+express.json, genellikle api istekleri yaparken content-type application/json yaptığımızda ilgili verileri body parametresine aktarmak için kullanılır diyebiliriz. urlencoded ise doğrudan form etiketinden gelen nameleri body içine aktarmakla görevlidir. 
+Kalamar — 04/08/2022 4:32 PM
+Req Params Spesifik bir routere yapılan parametreleri kontrol etmemizi sağlar. Veri tabanımızın olduğunu varsayarsak ve endpoint id ile cevap verecekse bu durumda veritbanımızda spesifik olan id adresini req.paramsdan gelecek olan veri ile arayıp veritbanındaki o id altındaki tüm contentleri geri döndürebiliriz.
+app.get('users/:id', (req, res) => {
+console.log("Params:", req.params) // { id: 'girilen değer' } şeklinde döndürür
+// sorgu işlemi yaptır
+if(req.params.id == 1) return console.log("Admin");
+console.log("Member");
+})
+ 
+Kalamar — 04/08/2022 6:09 PM
+express-fileupload bu middleware uygulamamıza resimleri post etmeye olanak sağlar. Atılan post isteği bir object döndürür ve o obje resmimizin tüm özelliklerini kapsar (ismi, boyutu, uzantısı vb). Daha fazla özellik için middlewarenin dökümasyonlarına bakılabilir.
+<! -- Dosyaları gönderebilmek için enctype multipart olarak ayarlamamız gerekir. --> 
+<form action="/posts" method="POST" enctype="multipart/form-data">
+
+<div>
+<input name="post_image" type="file">
+</div>
+
+MiddleWaremizi bu şekilde kullanarak programın kalbini yapmış oluruz
+// ... app = express
+const fileUpload = require('express-fileupload');
+app.use(fileUpload()); // app'a middlewareyi kullanmasını söyledik
+// postu almak için
+app.post('/posts', (req, res) => {
+console.log(req.files.post_image) // form actiondaki dosya verilerimiz files altında gelir ve bu log işleminde post_image'nin obje özellikleri döndürülür.
+})
+ 
+Kalamar — 04/11/2022 6:05 PM
+Session Kavramı
+Sessionlar genelde oturum olarak adlandırılır ve çalışma mantığı şöyle sınıflandırılabilir: bir userin login olduktan sonra tarayıcıyı kapatıp tekrar siteye girdiğinde aynı işlemleri tekrar  yapmaması için gerekli olan bir durumdur.
+
+Dipnot: Oturum verileri çerezin kendisine değil, yalnızca oturum kimliğine kaydedilir. Oturum verileri sunucu tarafında saklanır.
+
+const expressSession = require('express-session')
+// middleWare
+app.use(expressSession({
+secret: "KEY",
+resave: false,
+saveUninitialized: true
+}))
+
+Bu bölümde mongodb kullanılmıştır ama yinede çalışma mantığı her veritabanı için aynıdır. Bir post routesinden userId'i session olarak kayıt etmek:
+// login.js
+// ... require = ('express')
+router.post('/login', (req, res) => {
+const {email, password } = req.body;
+
+User.findOne({email}, (error, user) => {
+// user = mongoose obje verisine.
+// User bir mongoose instancesidir bu örnekte tanımlar varmış gibi kabul edilmektedir.
+if(user) { 
+if(user.password == password) {
+req.session.userId = user._id; // mongoose Object Id
+res.redirect('/');
+} else { res.redirect('/login') }
+
+} else { res.redirect('/')}
+})
+})
+
+// Oturumu bitirmek için
+router.get('/logout', (req, res) => {
+req.session.destroy(() => { res.redirect('/') })
+})
+
+Fakat bir durumdan ötürü eğer sunucumuz yeniden başlarsa bu cookiler kaybolacaktır. Bunları önlemek için mongodb için connect-mongo paketini kullanabiliriz. 
+Bu paket express'in ve connect (mongodb) yapısını alır ve  mongodb de session verileri tutabileceğimiz bir MondoDBStore class'ı döndürür.
+const mongoose = require('mongoose');
+const expressSession = require('express-session');
+const connectMongo = require('connect-mongo');
+
+const mongoStore = connectMongo(expressSession);
+app.use(expressSession({
+  secret: 'keys',
+  resave: true,
+  saveUninitialized: true,
+  store: new mongoStore({ moongoseConnection: moongose.connection})
+}));
+ 
+Kalamar — 04/17/2022 8:42 PM
+Bildirim Mesajları Göndermek (Flash Mesajlar)
+Bazen uygulamamızda örneğin kullanıcı login olduğunda, bir şeyler silindiğinde o olaya ilişkin temsili mesajlar göndermek isteriz bu flash mesajları yapmanın bir çok yolu olsada custom middleWare yaparak olayları kendimize göre bağlantılaştırabiliriz
+// main.js
+app.use((req, res, next) => {
+res.locals.sessionFlash = req.session.sessionFlash;
+delete req.session.sessionFlash;
+next();
+// eğer requestin içinde sessionFlash diye bir şey varsa bunu response gönder ardıdan sil anlamına geliyor ve next ile diğer ilgili isteğe gitmesini söylüyoruz.
+});
+
+Bu örnekte bir post gönderiyormuş gibi kabul edeceğiz ve dosyamızda uygulama şöyle olacak
+// post.js
+const Post = require('./models/post');
+
+app.post('/posts', (req, res) => {
+Post.create({ ...req.body });
+// Session Mesajı oluşturma bu durumda boostrap classları kullanacağız ama kendi custom classlarımızda kullanılabilir
+req.session.sessionFlash = {
+type: "alert alert-success",
+message: "Post başarılı bir şekilde oluşturuldu."
+}
+});
+
+View dosyamızda flash mesajları yakalamak için (Bu örnekte handlebars view engine kullanıldı.) 
+<div class="post">
+{{#if sessionFlash.message}}
+<div class="{{sessionFlash.type}}"> {{sessionFlash.message}} </div>
+{{/if}}
+</div>
+ 
+Kalamar — 04/19/2022 5:12 PM
+Linklerin Düzenlenmesi 
+
+Bağlantılı:
+logout routeri (session destroy)
+⁠express⁠
+
+Spesifik linklerin login olma durumunda gösterilmesini isteyebiliriz bu durumda küçük bir middleWare yazarak durumları kontrol edebiliriz:
+
+// index.js
+app.use((req, res, next) => {
+
+const {userId} = req.session
+if(userId) {
+res.locals.view = { displayLink: true }
+} else {
+res.locals.view = { displayLink: false }
+}
+next();
+})
+
+View dosyalarımızda (Bu örnekte handleBars kullanıldı) ise ayarlama şu şekildedir: 
+<li> <a href="/">AnaSayfa</a> </li>
+<li> <a href="/forum">Forum</a> </li>
+
+<! –– displayLink varsa aşağıdaki linkleri göster ––> 
+
+{{#if displayLink}}
+<li> <a href="/ayarlar">Ayarlar</a> </li>
+<li> <a href="/profile">Profil</a> </li>
+<li> <a href="/logout">Çıkış</a> </li>
+{{/if}}
+
+<! –– unless displayLink olmadığı zaman gözük anlamına geliyor ––> 
+
+{{#unless}}
+<li> <a href="/login">Giris</a> </li>
+<li> <a href="/register">Kayıt Ol</a> </li>
+{{/unless}}
+
+Eğer linklerimizin sıralı bir şekilde gözükmesini istiyorsak tek bir if kullanmak yerine link sırasının gerektiği yerlerde {{#if}} <html element> {{/if}}  kullanılabilir.
+ 
+Kalamar — 04/22/2022 6:53 PM
+Router DELETE işlemleri
+Spesifik bir verilerin silinmesini istediğimiz zaman delete metotu kullanılır.
+Bu örnekte method-override middleWaresi kullanılmıştır. Bu middleWare İstemcinin (Client-Side) desteklemediği yerlerde PUT veya DELETE gibi HTTP fiillerini kullanmanızı sağlar.
+
+// index.js
+const express = require('express')
+const methodOverride = require('method-override')
+const app = express()
+
+app.use(methodOverride('_method'))
+
+İşlem yapmak istediğimiz view sayfamız
+{{ #each categories }}
+<tr> {{ id }}</tr>
+<tr> {{ name }}</tr>
+<tr> 
+<! –– actiona tam olarak istediğimiz routenin yolu girlir böylece o routere bir post isteği yapılır 
+{{ID ve NAME }} categories den geliyor yani routerde render ettiğimiz obje key'inden ––> 
+
+<form action="/routes/categories/{{id}}?_method=DELETE" method="POST">
+<input type="hidden" name="_method" value="DELETE">
+<button type="submit"> Delete </button>
+</form>
+</tr>
+{{ /each }}
+
+Kategorilerimizin olduğu router
+const express = require('express') 
+const router = express.Router();
+const Category = require('..') // bu bir mongodb modelidir.
+
+router.get('/categories', (req, res) => {
+Category.find({}).then(categories => {
+res.render('/categories', { categories: categories})
+})
+});
+
+router.post('/categories', (req, res) => {
+Category.create(req.body, (error, category) => {
+if(!error) res.redirect('/categories');
+})
+})
+
+router.delete('/categories/:id', (req, res) => {
+Category.findOneAndDelete({_id: req.params.id}).then(() => {
+res.redirect('/categories');
+});
+});
+ 
+Kalamar — 05/01/2022 3:31 PM
+Javascript | Express : Truncate işlemleri
+Örneğin postlarımız var ve bu postlarımız başlık, açıklama yazısı şeklinde client tarafında renderleniyor biz bu uzun olan yazıları kesebiliriz.
+turuncate.js adında bir dosyaya helper function olarak kısa bir function tanımlarız
+
+module.exports = {
+truncate: (str, len) => {
+if(str > len) str = str.substring(0, len) + "...";
+return str;
+}
+}
+
+helper functionu hbs'e kayıt etme
+const hbs = require('hbs'); // handlebars
+const truncate = require('truncate'); // custom function
+app.engine('hbs', hbs({
+helpers: { truncate: truncate }
+}));
+// böylelikle truncate dosyasını helper function olarak hbs'e kayit ettik. Artık bütün hbs dosyalarımızda bu truncate dosyasını çağırabiliriz.
+
+View dosyasında helper fonksiyonu kullanma: {{ }} söz diliminin içine yazılır. fonksiyonu çağırmak için ismini yazmak gerekir, parametreleri göndermek için ise 1 boşluk atılarak gerekli parametreler yazılır. 
+<div> 
+{{ truncate text yazisi 3}}
+</div>
+ 
+Kalamar — 05/04/2022 2:17 PM
+Uygulama İçi Search İşlemleri
+Bazen bir çok verilerimiz olabilir ve bu spesifik verilere hemen ulaşmak istiyor olabiliriz bu tür durumlarda her uygulamada olması gereken arama çubukları, uygulama için büyük bir önem taşır.
+
+/posts/search endpointine istek atan bir form taglarımız olsun:
+<form action= "/posts/search" method="GET">
+<input placeholder="Ara" name="look">
+<button type="submit">Ara</button>
+</form>
+
+Not:
+regExp isteğe bağli bir durum ancak veritabaninda istenmeyen harfleri aramaması için duruma göre bir patern yazılması her zaman daha iyidir.
+
+Search routerimizde ise ilgili kod:
+function escapeRegex(text){
+return text.replace(/[-[\0()*+?..\^S|#\s]/8, "\S8");
+}
+app.get('/search', (req, res) => {
+// formdan name olarak biz look göndermiştik onu yakalayalım
+if(req.query.look) {
+const regex = new RegExp(escapeRegex (req.query.look), 'gi');
+/* 
+ilgili database kodları veya aramasını istediğimiz dosya
+*/
+res.render('site/sayfa', { /* göndermek istediğimiz veriler */})
+}
+});
+
+Endpointimiz şu şekilde gözükecektir:  <IP adresi veya alan adi>/posts/search?look=<Bir şeyler> 
+Kalamar — 05/04/2022 5:32 PM
+Sayfalama (Pagination)
+Eklenecek 
+Kalamar — 05/05/2022 2:08 PM
+Mail Ayarları ve Gönderimi
+Bu mail gönderme işlemi node-mail ile yapılmaktadır farklı alternatiflerde mevcuttur.
+Adımlar
+Ürünümüzü temsil eden mail adresiminizin güvenlik sekmesine giderek 2-step-verification'u aktif hale getirmememiz gerekmektedir.
+2 adım doğrulamasını tamamladıktan sonra, doğrulama için telefona sms atmasını iste, ve 2 adım doğrulamasını onayla
+Güvenlik sekmesine geri dön.
+App password kısmına git ve select app kısmında other'ı seçerek uygulama adını gir ve generate et.
+Gördüğün bilgileri sakla.
+Dosya dizinine git ve node mailer kütüphanesini indir
+nodemail için gerekli konfigürasyonları yap ve createTransport opsiyonlarında, user kısmına ürünümüzü temsil eden mail adresinini emailini, pass kısmına ise oluşturduğumunz uygulamanın şifresini örneğin: "jsdxdpaomhjuymca" gibi belirtmemiz gerekir.
+Örnek konfigürasyon aşağıda belirtilmiştir:
+const mail = require('nodemailer')
+const send = mail.createTransport({
+    // servisimizin hesabı
+    service: "gmail",
+    auth: {
+        user: "masimasmellov@gmail.com",
+        pass: "jsdxdpaomhjuymca"
+    }
+})
+mail opsiyonları 
+eğer html mesajı göndermek istersek text yerine html olarak değiştir
+const options = {
+
+    from: "masimasmellov@gmail.com",
+    to: "akabilmemne@gmail.com",
+    subject: "Bu bir test mesajıdır",
+    text: "Node.js tarafından gönderildi."
+}
+// maili gönder
+send.sendMail(options, function(err, info) {
+
+    if (err) { console.log("hata",err)}
+    else { console.log("sent mail:", info.response)}
+})
